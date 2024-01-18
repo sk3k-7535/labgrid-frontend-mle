@@ -4,6 +4,7 @@
 
 export const environment = {
     production: false,
+    labbyURL: "ws://localhost:8083/ws",
 };
 
 /*

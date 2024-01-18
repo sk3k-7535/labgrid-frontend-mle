@@ -2,6 +2,8 @@ import { Component, OnDestroy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import * as autobahn from 'autobahn-browser';
 
+import { environment } from 'src/environments/environment';
+
 import { Place } from 'src/models/place';
 import { Resource } from 'src/models/resource';
 
@@ -136,7 +138,7 @@ export class ConsoleComponent implements OnDestroy {
 
     private async openConsole(): Promise<void> {
         const connection = new autobahn.Connection({
-            url: 'ws://localhost:8083/ws',
+            url: environment.labbyURL, 
             realm: 'frontend',
         });
         let component = this;

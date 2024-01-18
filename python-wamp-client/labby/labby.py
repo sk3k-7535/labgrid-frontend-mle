@@ -18,7 +18,7 @@ from autobahn.asyncio.wamp import ApplicationRunner, ApplicationSession
 from .labby_ssh import Session as SSHSession
 from .labby_ssh import parse_hostport
 from .labby_types import (ExporterName, GroupName, PlaceName, ResourceName,
-                          Session)
+                          LabbySession, Session)
 
 from .router import Router
 from .rpc import (acquire, acquire_resource, add_match, cancel_reservation,
@@ -33,6 +33,7 @@ from .rpc import (acquire, acquire_resource, add_match, cancel_reservation,
 labby_sessions: List["LabbyClient"] = []
 frontend_sessions: List["RouterInterface"] = []
 
+DEFAULT_COORDINATOR = False 
 
 def gethostname():
     return os.environ.get('LABBY_HOSTNAME', _gethostname())
@@ -42,7 +43,7 @@ def getuser():
     return os.environ.get('LABBY_USERNAME', _getuser())
 
 
-class LabbyClient(Session):
+class LabbyClient(LabbySession):
     """
     Specializes Application Session to handle Communication
     specifically with the labgrid-frontend and the labgrid coordinator
@@ -62,7 +63,10 @@ class LabbyClient(Session):
         self.log.info(
             f"Connected to Coordinator, joining realm '{self.config.realm}'")
         # TODO load from config or get from frontend
-        self.join(self.config.realm, ['ticket'],
+        if(DEFAULT_COORDINATOR):
+            self.join(self.config.realm)
+        else:
+            self.join(self.config.realm, ['ticket'],
                   authid=f'client/{self.user_name}')
 
     def onChallenge(self, challenge):
@@ -162,7 +166,7 @@ class LabbyClient(Session):
                                   'name': name, **(place_data or {})})
 
 
-class RouterInterface(ApplicationSession):
+class RouterInterface(Session):
     """
     Wamp router, for communicaion with frontend
     """
@@ -256,20 +260,20 @@ def _start_labby(remote_url, backend_url, backend_realm, keyfile_path, frontend_
     """
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    remote_host, remote_port, user = parse_hostport(remote_url)
-    assert remote_host and remote_port and user
-    ssh_session = SSHSession(host=remote_host,
-                             port=remote_port,
-                             username=user,
-                             keyfile_path=keyfile_path)
-    if (password := getenv('LABBY_SSH_PASSWORD', None)) is None:
-        password = getpass.getpass(
-            f"Password for: {remote_url}:\n")
-    ssh_session.open(password)
-    # local_port = parse_hostport(backend_url)[1]
-    asyncio.get_event_loop().run_in_executor(
-        None, ssh_session.forward, 20408, 'localhost', 20408)
-
+    ssh_session = None
+    if False:
+        remote_host, remote_port, user = parse_hostport(remote_url)
+        assert remote_host and remote_port and user
+        ssh_session = SSHSession(host=remote_host,
+                                 port=remote_port,
+                                 username=user)#,
+                                 # keyfile_path=keyfile_path)
+        # if (password := getenv('LABBY_SSH_PASSWORD', None)) is None:
+        #     password = getpass.getpass(
+        #         f"Password for: {remote_url}:\n")
+        ssh_session.open(password)
+        local_port = parse_hostport(backend_url)[1]
+        asyncio.get_event_loop().run_in_executor(None, ssh_session.forward, 20408, 'localhost', 20408)
     def start():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -294,8 +298,8 @@ def run_router(backend_url: str,
                backend_realm: str,
                frontend_url: str,
                frontend_realm: str,
-               keyfile_path: str,
-               remote_url: str):
+               remote_url: str="",
+               keyfile_path: str = None):
     """
     Connect to labgrid coordinator and start local crossbar router
     """

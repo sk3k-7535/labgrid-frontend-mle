@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { environment } from 'src/environments/environment';
 
 import * as autobahn from 'autobahn-browser';
 
@@ -16,7 +17,7 @@ export class LoginService {
 
     constructor() {
         const connection = new autobahn.Connection({
-            url: 'ws://localhost:8083/ws',
+            url: environment.labbyURL,
             realm: 'frontend',
         });
 
