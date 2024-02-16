@@ -35,8 +35,33 @@ async def get_resources(context: "Session"):
     context.log.info("Refreshing Cache for resources.")
     return await context.call("org.labgrid.coordinator.get_resources")
 
+class Logwrapper():
+    def __init__(self, logger):
+        self.reallogger = logger
+        self.trace = self.logdecorator(self.reallogger.trace)
+        self.debug = self.logdecorator(self.reallogger.debug)
+        self.info = self.logdecorator(self.reallogger.info)
+        self.warn = self.logdecorator(self.reallogger.warn)
+        self.error = self.logdecorator(self.reallogger.error)
+
+    def logdecorator(self, func):
+        def wrapper(msg, *args, **kwargs):
+            msg = str(msg)
+            msg = msg.replace("{", "dict(")
+            msg = msg.replace("}", ")")
+            try:
+                func(msg, *args, **kwargs)
+            except Exception as e:
+                print("trying to print message: {}\nError: {}".format(msg, e))
+        return wrapper
+
 
 class Session(ApplicationSession):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.log = Logwrapper(self.log)
+
+class LabbySession(Session):
     """
     Forward declaration for Labby session
     """
@@ -58,8 +83,6 @@ class Session(ApplicationSession):
         self.keyfile_path: str
         self.remote_url: str
         super().__init__(*args, **kwargs)
-
-
 
 
 class LabbyType:

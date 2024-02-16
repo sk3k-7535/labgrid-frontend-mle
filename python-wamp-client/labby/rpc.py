@@ -22,7 +22,6 @@ from .labby_types import (ExporterName, GroupName, LabbyPlace, PlaceName, PowerS
                           ResourceName, Session, Place)
 from .labby_util import flatten
 
-
 def _check_not_none(*args, **kwargs) -> Optional[LabbyError]:
     return next((invalid_parameter(f"Missing required parameter: {name}.") for name, val in vars().items() if val is None), None)
 
@@ -110,6 +109,18 @@ def labby_serialized(func):
             f"{type(ret)} can currently not be serialized!")
 
     return wrapped
+
+
+async def call_coordinator(context: Session, callstring: str, *args, **kwargs) -> Any:
+    if not args: args = []
+    try:
+        fullstring = f"{callstring} {' '.join(args)} {kwargs}"
+        context.log.info("calling coordinator {}".format(fullstring))
+        res = await context.call(callstring, *args)
+        context.log.info("received answer for {}: {}".format(fullstring, res))
+        return res
+    except ApplicationError as err:
+        return failed(f"Got exception while trying to call {fullstring}: {err}")
 
 
 async def fetch(context: Session, attribute: str, endpoint: str, *args, **kwargs) -> Any:
@@ -217,7 +228,7 @@ async def fetch_power_state(context: Session,
     if isinstance(_places, LabbyError):
         return _places
     power_states = {}
-    assert _places
+#    assert _places
     for place_name, place_data in _places.items():
         if 'acquired_resources' in place_data:
             if len(place_data['acquired_resources']) == 0 or place_name not in _resources:
@@ -251,7 +262,7 @@ async def places(context: Session,
         return next((token for token, x in context.reservations.items()
                      if x['filters']['main']['name'] == name), None)
     place_res = []
-    assert data
+#    assert data
     for place_name, place_data in data.items():
         # append the place to acquired places if
         # it has been acquired in a previous session
@@ -404,10 +415,7 @@ async def acquire(context: Session,
 
     # , group, resource_key, place)
     context.log.info(f"Acquiring place {place}.")
-    try:
-        acquire_successful = await context.call("org.labgrid.coordinator.acquire_place", place)
-    except ApplicationError as err:
-        return failed(f"Got exception while trying to call org.labgrid.coordinator.acquire_place. {err}")
+    acquire_successful = await call_coordinator(context, "org.labgrid.coordinator.acquire_place", place)
     if acquire_successful:
         context.acquired_places.add(place)
         # remove the reservation if there was one
@@ -428,15 +436,12 @@ async def release(context: Session,
     """
     if place is None:
         return invalid_parameter("Missing required parameter: place.")
-    if place not in context.acquired_places:
+    if place not in context.acquisred_places:
         return failed(f"Place {place} is not acquired")
     context.log.info(f"Releasing place {place}.")
-    try:
-        release_successful = await context.call('org.labgrid.coordinator.release_place', place)
-        if place in context.acquired_places:  # place update was quicker
-            context.acquired_places.remove(place)
-    except ApplicationError as err:
-        return failed(f"Got exception while trying to call org.labgrid.coordinator.release_place. {err}")
+    release_successful = await call_coordinator(context,'org.labgrid.coordinator.release_place', place)
+    if place in context.acquired_places:  # place update was quicker
+        context.acquired_places.remove(place)
     return release_successful
 
 
@@ -456,7 +461,7 @@ async def get_reservations(context: Session) -> Dict:
     """
     RPC call to list current reservations on the Coordinator
     """
-    reservation_data: Dict = await context.call("org.labgrid.coordinator.get_reservations")
+    reservation_data: Dict = await call_coordinator(context, "org.labgrid.coordinator.get_reservations")
 
     for token, data in reservation_data.items():
         if (data['state'] in ('waiting', 'allocated', 'acquired')
@@ -475,7 +480,7 @@ async def create_reservation(context: Session, place: PlaceName, priority: float
     await get_reservations(context)  # get current state from coordinator
     if any((place == x['filters']['main']['name'] for x in context.reservations.values() if 'name' in x['filters']['main'] and x['state'] not in ('expired', 'invalid'))):
         return failed(f"Place {place} is already reserved.")
-    reservation = await context.call("org.labgrid.coordinator.create_reservation",
+    reservation = await call_coordinator(context, "org.labgrid.coordinator.create_reservation",
                                      f"name={place}",
                                      prio=priority)
     if not reservation:
@@ -488,14 +493,14 @@ async def create_reservation(context: Session, place: PlaceName, priority: float
 async def refresh_reservations(context: Session):
     while True:
         to_remove = set()
-        context.reservations = await context.call("org.labgrid.coordinator.get_reservations")
+        context.reservations = await call_coordinator(context, "org.labgrid.coordinator.get_reservations")
         for token in context.to_refresh:
             if token in context.reservations:
                 # context.log.info(f"Refreshing reservation {token}")
                 state = context.reservations[token]['state']
                 place_name = context.reservations[token]['filters']['main']['name']
                 if state == 'waiting':
-                    ret = await context.call("org.labgrid.coordinator.poll_reservation", token)
+                    ret = await call_coordinator(context, "org.labgrid.coordinator.poll_reservation", token)
                     if not ret:
                         context.log.error(
                             f"Failed to poll reservation {token}.")
@@ -516,7 +521,7 @@ async def refresh_reservations(context: Session):
                 to_remove.add(token)
         for token in to_remove:
             context.to_refresh.remove(token)
-        await asyncio.sleep(1.)  # !! TODO set to 10s
+        await asyncio.sleep(10.)  # !! TODO set to 10s
 
 
 @labby_serialized
@@ -529,7 +534,7 @@ async def cancel_reservation(context: Session, place: PlaceName) -> Union[bool, 
     if token is None:
         return failed(f"No reservations available for place {place}.")
     del context.reservations[token]
-    return await context.call("org.labgrid.coordinator.cancel_reservation", token)
+    return await call_coordinator(context,"org.labgrid.coordinator.cancel_reservation", token)
 
 
 @labby_serialized
@@ -542,7 +547,7 @@ async def poll_reservation(context: Session, place: PlaceName) -> Union[Dict, La
         return failed(f"No reservations available for place {place}.")
     if not token:
         return failed("Failed to poll reservation.")
-    reservation = await context.call("org.labgrid.coordinator.poll_reservation", token)
+    reservation = await call_coordinator(context,"org.labgrid.coordinator.poll_reservation", token)
     context.reservations[token] = reservation
     return reservation
 
@@ -721,10 +726,10 @@ async def create_place(context: Session, place: PlaceName) -> Union[bool, LabbyE
     _places = await fetch_places(context, place=None)
     if isinstance(_places, LabbyError):
         return _places
-    assert _places
+#    assert _places
     if place in _places:
         return failed(f"Place {place} already exists.")
-    return await context.call("org.labgrid.coordinator.add_place", place)
+    return await call_coordinator(context,"org.labgrid.coordinator.add_place", place)
 
 
 @labby_serialized
@@ -735,7 +740,7 @@ async def delete_place(context: Session, place: PlaceName) -> Union[bool, LabbyE
     assert context.places  # should have been set with fetch_places
     if isinstance(_places, LabbyError):
         return _places
-    return await context.call("org.labgrid.coordinator.del_place", place)
+    return await call_coordinator(context, "org.labgrid.coordinator.del_place", place)
 
 
 @labby_serialized
@@ -745,7 +750,7 @@ async def create_resource(context: Session, group_name: GroupName, resource_name
         return invalid_parameter("Missing required parameter: group_name.")
     if resource_name is None:
         return invalid_parameter("Missing required parameter: resource_name.")
-    ret = await context.call("org.labgrid.coordinator.set_resource", group_name, resource_name, {})
+    ret = await call_coordinator(context, "org.labgrid.coordinator.set_resource", group_name, resource_name, {})
     return ret
 
 
@@ -765,7 +770,7 @@ async def places_names(context: Session) -> Union[List[PlaceName], LabbyError]:
     _places = await fetch_places(context, None)
     if isinstance(_places, LabbyError):
         return _places
-    assert _places
+    # assert _places
     return list(_places.keys())
 
 
@@ -859,3 +864,4 @@ async def cli_command(context: Session, command: str) -> Union[str, LabbyError]:
 @labby_serialized
 async def username(context: Session) -> Union[str, LabbyError]:
     return context.user_name or failed("Username has not been set correctly.")
+

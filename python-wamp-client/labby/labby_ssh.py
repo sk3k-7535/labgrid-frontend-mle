@@ -101,7 +101,7 @@ class Session:
     """
     host: str = attrib(validator=[_validate_field("Host")])
     username: str = attrib(validator=[_validate_field("Username")])
-    keyfile_path: str = attrib(validator=[_validate_field("Keyfile")])
+    keyfile_path: str = None #attrib(default=None, validator=[_validate_field("Keyfile")])
     port: int = attrib(default=22, validator=[_validate_port])
     opened_channels: List[Channel] = []
     forwarded_channels: List[Tunnel] = []

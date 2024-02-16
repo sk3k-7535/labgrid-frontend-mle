@@ -5,6 +5,7 @@ import * as autobahn from 'autobahn-browser';
 import { BehaviorSubject } from 'rxjs';
 
 import { Place } from '../../models/place';
+import { environment } from 'src/environments/environment';
 
 @Injectable({
     providedIn: 'root',
@@ -16,7 +17,7 @@ export class PlaceService {
 
     constructor() {
         const connection = new autobahn.Connection({
-            url: 'ws://localhost:8083/ws',
+            url: environment.labbyURL,
             realm: 'frontend',
         });
 
