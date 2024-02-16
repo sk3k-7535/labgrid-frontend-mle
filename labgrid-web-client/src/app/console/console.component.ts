@@ -138,7 +138,7 @@ export class ConsoleComponent implements OnDestroy {
 
     private async openConsole(): Promise<void> {
         const connection = new autobahn.Connection({
-            url: environment.labbyURL, 
+            url: environment.labbyURL,
             realm: 'frontend',
         });
         let component = this;

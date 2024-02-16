@@ -100,7 +100,7 @@ export class PlaceComponent {
             this.placeStates.push({ name: 'Host name: ', value: this.place.exporter });
         }
 
-/*        if (this.place.power_state) {
+        /*        if (this.place.power_state) {
             this.placeStates.push({ name: 'Power state: ', value: 'on' });
         } else {
             this.placeStates.push({ name: 'Power state: ', value: 'off' });
