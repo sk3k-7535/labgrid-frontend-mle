@@ -436,7 +436,7 @@ async def release(context: Session,
     """
     if place is None:
         return invalid_parameter("Missing required parameter: place.")
-    if place not in context.acquisred_places:
+    if place not in context.acquired_places:
         return failed(f"Place {place} is not acquired")
     context.log.info(f"Releasing place {place}.")
     release_successful = await call_coordinator(context,'org.labgrid.coordinator.release_place', place)
