@@ -46,7 +46,7 @@
             mat-stroked-button
             color="primary"
             class="mat-elevation-z2"
-            (click)="acquirePlace()"
+            (click)="openGetUsernameDialog('acquire')"
             [disabled]="isAcquired"
         >
             Acquire
@@ -56,7 +56,7 @@
             color="primary"
             class="mat-elevation-z2"
             (click)="releasePlace()"
-            [disabled]="!isAcquiredByUser"
+            [disabled]="!isAcquired"
         >
             Release
         </button>

@@ -31,6 +31,7 @@ import { ConsoleComponent } from './console/console.component';
 import { ErrorComponent } from './error/error.component';
 import { LoginComponent } from './login/login.component';
 import { PlaceComponent } from './place/place.component';
+import { GetUsernameDialogComponent } from './dialogs/get-username-dialog/get-username-dialog.component';
 import { PlaceCreationDialogComponent } from './dialogs/place-creation-dialog/place-creation-dialog.component';
 import { PlaceDeletionDialogComponent } from './dialogs/place-deletion-dialog/place-deletion-dialog.component';
 import { PlaceResetDialogComponent } from './dialogs/place-reset-dialog/place-reset-dialog.component';
@@ -53,6 +54,7 @@ import { ResourceService } from './_services/resource.service';
         ErrorComponent,
         LoginComponent,
         PlaceComponent,
+        GetUsernameDialogComponent,
         PlaceCreationDialogComponent,
         PlaceDeletionDialogComponent,
         PlaceResetDialogComponent,

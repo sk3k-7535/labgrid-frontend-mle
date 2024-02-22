@@ -56,8 +56,15 @@ export class PlaceService {
         return place;
     }
 
-    public async acquirePlace(placeName: string): Promise<{ successful: boolean; errorMessage: string }> {
-        const acquire = await this.session.call('localhost.acquire', [placeName]);
+    public async acquirePlace(
+        placeName: string,
+        username: string
+    ): Promise<{ successful: boolean; errorMessage: string }> {
+
+        const acquire = await this.session.call('localhost.acquire', [
+            placeName, username,
+        ]);
+
         if (acquire === true) {
             return { successful: true, errorMessage: '' };
         } else if (acquire === false) {
