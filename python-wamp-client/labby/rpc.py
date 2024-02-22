@@ -21,6 +21,7 @@ from .labby_error import (LabbyError, failed, invalid_parameter,
 from .labby_types import (ExporterName, GroupName, LabbyPlace, PlaceName, PowerState, Resource,
                           ResourceName, Session, Place)
 from .labby_util import flatten
+from .userclient import call_in_userclient
 
 def _check_not_none(*args, **kwargs) -> Optional[LabbyError]:
     return next((invalid_parameter(f"Missing required parameter: {name}.") for name, val in vars().items() if val is None), None)
@@ -113,10 +114,15 @@ def labby_serialized(func):
 
 async def call_coordinator(context: Session, callstring: str, *args, **kwargs) -> Any:
     if not args: args = []
+    fullstring = f"{callstring} {' '.join(args)} {kwargs}"
+
     try:
-        fullstring = f"{callstring} {' '.join(args)} {kwargs}"
-        context.log.info("calling coordinator {}".format(fullstring))
-        res = await context.call(callstring, *args)
+        if username := kwargs.get('username'):
+            res = await call_in_userclient(context, username, callstring, *args)
+        else:
+            context.log.info(f"calling coordinator {fullstring}")
+            res = await context.call(callstring, *args)
+
         context.log.info("received answer for {}: {}".format(fullstring, res))
         return res
     except ApplicationError as err:
@@ -133,7 +139,7 @@ async def fetch(context: Session, attribute: str, endpoint: str, *args, **kwargs
 
     data: Optional[Dict] = getattr(context, attribute)
     if data is None:
-        data: Optional[Dict] = await context.call(endpoint, *args, **kwargs)
+        data: Optional[Dict] = await call_coordinator(context, endpoint, *args, **kwargs)
         setattr(context, attribute, data)
     return data
 
@@ -404,10 +410,14 @@ async def resource_names(context: Session) -> List[Dict[str, str]]:
 
 @labby_serialized
 async def acquire(context: Session,
-                  place: PlaceName) -> Union[bool, LabbyError]:
+                  place: PlaceName,
+                  username: str  # used by @run_in_user_client
+                  # userclient=None   # set  in @run_in_user_client
+                 ) -> Union[bool, LabbyError]:
     """
     rpc for acquiring places
     """
+    context.log.debug(f"about to acquire {place} for {username}")
     if place is None:
         return invalid_parameter("Missing required parameter: place.")
     if place in context.acquired_places:
@@ -415,7 +425,7 @@ async def acquire(context: Session,
 
     # , group, resource_key, place)
     context.log.info(f"Acquiring place {place}.")
-    acquire_successful = await call_coordinator(context, "org.labgrid.coordinator.acquire_place", place)
+    acquire_successful = await call_coordinator(context, "org.labgrid.coordinator.acquire_place", place, username=username)
     if acquire_successful:
         context.acquired_places.add(place)
         # remove the reservation if there was one
@@ -436,8 +446,8 @@ async def release(context: Session,
     """
     if place is None:
         return invalid_parameter("Missing required parameter: place.")
-    if place not in context.acquired_places:
-        return failed(f"Place {place} is not acquired")
+    # if place not in context.acquired_places:
+    #     return failed(f"Place {place} is not acquired")
     context.log.info(f"Releasing place {place}.")
     release_successful = await call_coordinator(context,'org.labgrid.coordinator.release_place', place)
     if place in context.acquired_places:  # place update was quicker
@@ -864,4 +874,3 @@ async def cli_command(context: Session, command: str) -> Union[str, LabbyError]:
 @labby_serialized
 async def username(context: Session) -> Union[str, LabbyError]:
     return context.user_name or failed("Username has not been set correctly.")
-

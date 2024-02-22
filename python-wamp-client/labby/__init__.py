@@ -9,3 +9,4 @@ from . import rpc
 from . import wsurl
 from . import labby_types
 from . import router
+from . import userclient
