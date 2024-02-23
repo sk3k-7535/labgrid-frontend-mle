@@ -84,8 +84,8 @@ export class PlaceService {
         }
     }
 
-    public async reservePlace(placeName: string): Promise<any> {
-        let result = await this.session.call('localhost.create_reservation', [placeName]);
+    public async reservePlace(placeName: string, username: string): Promise<any> {
+        let result = await this.session.call('localhost.create_reservation', [placeName, username]);
         return result;
     }
 

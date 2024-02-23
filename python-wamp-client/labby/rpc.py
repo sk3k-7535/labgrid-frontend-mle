@@ -482,7 +482,7 @@ async def get_reservations(context: Session) -> Dict:
 
 
 @labby_serialized
-async def create_reservation(context: Session, place: PlaceName, priority: float = 0.) -> Union[Dict, LabbyError]:
+async def create_reservation(context: Session, place: PlaceName, username="", priority: float = 0.) -> Union[Dict, LabbyError]:
     # TODO figure out filters, priorities, etc
     # TODO should multiple reservations be allowed?
     if place is None:
@@ -492,7 +492,7 @@ async def create_reservation(context: Session, place: PlaceName, priority: float
         return failed(f"Place {place} is already reserved.")
     reservation = await call_coordinator(context, "org.labgrid.coordinator.create_reservation",
                                      f"name={place}",
-                                     prio=priority)
+                                     prio=priority, username=username)
     if not reservation:
         return failed("Failed to create reservation")
     context.reservations.update(reservation)
@@ -519,7 +519,7 @@ async def refresh_reservations(context: Session):
                 elif (context.reservations[token]['state'] == 'allocated'
                       or (context.reservations[token]['state'] == 'acquired' and place_name not in context.acquired_places)
                       ):
-                    ret = await acquire(context, place_name)
+                    ret = await acquire(context, place_name, context.reservations[token].get('owner'))
                     await cancel_reservation(context, place_name)
                     if not ret:
                         context.log.error(
@@ -575,7 +575,7 @@ async def reset(context: Session, place: PlaceName) -> Union[bool, LabbyError]:
     release_later = False
     if place not in context.acquired_places:
         release_later = True
-        acq = await acquire(context, place)
+        acq = await acquire(context, place, "tmp4reset")
         if isinstance(acquire, LabbyError):
             return acq
         if not acq:
@@ -617,7 +617,7 @@ async def console(context: Session, place: PlaceName):
     if place is None:
         return invalid_parameter("Missing required parameter: place.")
     if place not in context.acquired_places:
-        ret = await acquire(context, place)
+        ret = await acquire(context, place, '')
         if isinstance(ret, LabbyError):
             return ret
         if not ret:

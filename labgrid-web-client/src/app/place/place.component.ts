@@ -150,31 +150,32 @@ export class PlaceComponent {
         this.hasNetworkSerialPort = false;
     }
 
-    openGetUsernameDialog(nextAction:string): void {
+    openGetUsernameDialog(nextAction: string): void {
         const dialogRef = this._dialog.open(GetUsernameDialogComponent, {
             autoFocus: false,
         });
 
         dialogRef.afterClosed().subscribe((result) => {
             if (result == undefined) {
-		this._snackBar.open('Aborting due to missing username');
-		return;
-	    }
+                this._snackBar.open('Aborting due to missing username');
+                return;
+            }
 
-	    switch(nextAction) {
-		case 'acquire': {this.acquirePlace(result); break;}
-	    }
-	    return result;
+            switch (nextAction) {
+                case 'acquire': { this.acquirePlace(result); break; }
+                case 'reserve': { this.reservePlace(result); break; }
+            }
+            return result;
         });
     }
 
-    public async acquirePlace(username:string) {
-// 	      this._snackBar.open('acquire for '+username, 'OK');
+    public async acquirePlace(username: string) {
+        this._snackBar.open('acquire for ' + username, 'OK');
         const ret = await this._ps.acquirePlace(
             this.route.snapshot.url[this.route.snapshot.url.length - 1].path,
             username
         );
-        this._snackBar.open('acquire for '+username, 'OK');
+
 
         if (ret.successful) {
             this._snackBar.open('Place has been acquired succesfully!', 'OK', {
@@ -211,8 +212,9 @@ export class PlaceComponent {
         }
     }
 
-    public async reservePlace() {
-        const ret: any = await this._ps.reservePlace(this.route.snapshot.url[this.route.snapshot.url.length - 1].path);
+    public async reservePlace(username: string) {
+        this._snackBar.open('reserve for ' + username, 'OK');
+        const ret: any = await this._ps.reservePlace(this.route.snapshot.url[this.route.snapshot.url.length - 1].path, username);
         if (ret.error !== undefined && ret.error.message !== undefined) {
             this._snackBar.open(ret.error.message, 'OK', {
                 duration: 3000,
