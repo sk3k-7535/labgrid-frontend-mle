@@ -575,7 +575,7 @@ async def reset(context: Session, place: PlaceName) -> Union[bool, LabbyError]:
     release_later = False
     if place not in context.acquired_places:
         release_later = True
-        acq = await acquire(context, place, "tmp4reset")
+        acq = await acquire(context, place, "tmp/reset")
         if isinstance(acquire, LabbyError):
             return acq
         if not acq:
@@ -616,12 +616,12 @@ async def console(context: Session, place: PlaceName):
     # TODO allow selection of resource to connect console to
     if place is None:
         return invalid_parameter("Missing required parameter: place.")
-    if place not in context.acquired_places:
-        ret = await acquire(context, place, '')
-        if isinstance(ret, LabbyError):
-            return ret
-        if not ret:
-            return failed("Failed to acquire Place (It may already have been acquired).")
+    # if place not in context.acquired_places:
+    #     ret = await acquire(context, place, 'tmp/console')
+    #     if isinstance(ret, LabbyError):
+    #         return ret
+    #     if not ret:
+    #         return failed("Failed to acquire Place (It may already have been acquired).")
     if place in context.open_consoles:
         return failed(f"There is already a console open for {place}.")
     # check that place has a console
