@@ -4,6 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Place } from '../../models/place';
 import { Resource } from '../../models/resource';
 
+import { GetUsernameDialogComponent } from '../dialogs/get-username-dialog/get-username-dialog.component';
 import { PlaceDeletionDialogComponent } from '../dialogs/place-deletion-dialog/place-deletion-dialog.component';
 import { PlaceResetDialogComponent } from '../dialogs/place-reset-dialog/place-reset-dialog.component';
 
@@ -149,8 +150,32 @@ export class PlaceComponent {
         this.hasNetworkSerialPort = false;
     }
 
-    public async acquirePlace() {
-        const ret = await this._ps.acquirePlace(this.route.snapshot.url[this.route.snapshot.url.length - 1].path);
+    openGetUsernameDialog(nextAction: string): void {
+        const dialogRef = this._dialog.open(GetUsernameDialogComponent, {
+            autoFocus: false,
+        });
+
+        dialogRef.afterClosed().subscribe((result) => {
+            if (result == undefined) {
+                this._snackBar.open('Aborting due to missing username');
+                return;
+            }
+
+            switch (nextAction) {
+                case 'acquire': { this.acquirePlace(result); break; }
+                case 'reserve': { this.reservePlace(result); break; }
+            }
+            return result;
+        });
+    }
+
+    public async acquirePlace(username: string) {
+        this._snackBar.open('acquire for ' + username, 'OK');
+        const ret = await this._ps.acquirePlace(
+            this.route.snapshot.url[this.route.snapshot.url.length - 1].path,
+            username
+        );
+
 
         if (ret.successful) {
             this._snackBar.open('Place has been acquired succesfully!', 'OK', {
@@ -187,8 +212,9 @@ export class PlaceComponent {
         }
     }
 
-    public async reservePlace() {
-        const ret: any = await this._ps.reservePlace(this.route.snapshot.url[this.route.snapshot.url.length - 1].path);
+    public async reservePlace(username: string) {
+        this._snackBar.open('reserve for ' + username, 'OK');
+        const ret: any = await this._ps.reservePlace(this.route.snapshot.url[this.route.snapshot.url.length - 1].path, username);
         if (ret.error !== undefined && ret.error.message !== undefined) {
             this._snackBar.open(ret.error.message, 'OK', {
                 duration: 3000,

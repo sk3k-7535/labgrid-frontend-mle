@@ -56,8 +56,15 @@ export class PlaceService {
         return place;
     }
 
-    public async acquirePlace(placeName: string): Promise<{ successful: boolean; errorMessage: string }> {
-        const acquire = await this.session.call('localhost.acquire', [placeName]);
+    public async acquirePlace(
+        placeName: string,
+        username: string
+    ): Promise<{ successful: boolean; errorMessage: string }> {
+
+        const acquire = await this.session.call('localhost.acquire', [
+            placeName, username,
+        ]);
+
         if (acquire === true) {
             return { successful: true, errorMessage: '' };
         } else if (acquire === false) {
@@ -77,8 +84,8 @@ export class PlaceService {
         }
     }
 
-    public async reservePlace(placeName: string): Promise<any> {
-        let result = await this.session.call('localhost.create_reservation', [placeName]);
+    public async reservePlace(placeName: string, username: string): Promise<any> {
+        let result = await this.session.call('localhost.create_reservation', [placeName, username]);
         return result;
     }
 

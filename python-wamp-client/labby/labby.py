@@ -13,7 +13,7 @@ from time import sleep
 from typing import Callable, Dict, List, Optional
 
 import autobahn.wamp.exception as wexception
-from autobahn.asyncio.wamp import ApplicationRunner, ApplicationSession
+from autobahn.asyncio.wamp import ApplicationRunner
 
 from .labby_ssh import Session as SSHSession
 from .labby_ssh import parse_hostport
@@ -21,6 +21,7 @@ from .labby_types import (ExporterName, GroupName, PlaceName, ResourceName,
                           LabbySession, Session)
 
 from .router import Router
+from .userclient import UserClientSession
 from .rpc import (acquire, acquire_resource, add_match, cancel_reservation,
                   cli_command, console, console_close, console_write, create_place,
                   create_reservation, create_resource, del_match, delete_place,
@@ -33,7 +34,7 @@ from .rpc import (acquire, acquire_resource, add_match, cancel_reservation,
 labby_sessions: List["LabbyClient"] = []
 frontend_sessions: List["RouterInterface"] = []
 
-DEFAULT_COORDINATOR = False 
+DEFAULT_COORDINATOR = False
 
 def gethostname():
     return os.environ.get('LABBY_HOSTNAME', _gethostname())
@@ -70,13 +71,16 @@ class LabbyClient(LabbySession):
                   authid=f'client/{self.user_name}')
 
     def onChallenge(self, challenge):
-        self.log.info("Authencticating.")
-        if challenge.method == 'ticket':
-            return ""  # don't provide a password
-        self.log.error(
-            "Only Ticket authentication enabled, atm. Aborting...")
-        raise NotImplementedError(
-            "Only Ticket authentication enabled, atm")
+        if not DEFAULT_COORDINATOR:
+            self.log.info("Authencticating.")
+            if challenge.method == 'ticket':
+                return ""  # don't provide a password
+            self.log.error(
+                "Only Ticket authentication enabled, atm. Aborting...")
+            raise NotImplementedError(
+                "Only Ticket authentication enabled, atm")
+        else:
+            pass
 
     async def onJoin(self, details):
         self.log.info("Joined Coordinator Session.")
@@ -196,7 +200,10 @@ class RouterInterface(Session):
         endpoint = f"localhost.{func_key}"
 
         async def bind(*o_args):
-            return await procedure(self._labby_callback(), *args, *o_args)
+            try:
+                return await procedure(self._labby_callback(), *args, *o_args)
+            except Exception as ex:
+                self.log.info(ex)
         func = bind
         self.log.info(f"Registered function for endpoint {endpoint}.")
         try:
@@ -315,8 +322,11 @@ def run_router(backend_url: str,
     asyncio.log.logger.info(
         "Starting Frontend Router on url %s and realm %s", frontend_url, frontend_realm)
     router = Router("labby/router/.crossbar")
-    sleep(4)
+    sleep(8)
     assert frontend_coro is not None
+
+    UserClientSession.set_classvariables(DEFAULT_COORDINATOR, backend_url, backend_realm)
+
     try:
         loop.run_until_complete(frontend_coro)
         loop.run_forever()
