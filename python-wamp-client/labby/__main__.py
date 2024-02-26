@@ -69,10 +69,10 @@ if __name__ == '__main__':
     # arguments
     parser = argparse.ArgumentParser(
         description='Launch Labgrid-frontend Router')
-    parser.add_argument('--backend_url', type=str, required=False, help="URL of labgrid-coordinator (e.g. ws://localhost:20408/ws)")
-    parser.add_argument('--backend_realm', type=str, required=False, help="realm for the WAMP router", default="realm1" )
-    parser.add_argument('--frontend_url', type=str, required=False, help="URL for communication between labby and frontend (recommended: ws://localhost:8083/ws)", default="ws://localhost:8083/ws")
-    parser.add_argument('--frontend_realm', type=str, required=False, help="realm for labby-wamp-router", default="frontend")
+    parser.add_argument('--backend_url', type=str, required=False, help="URL of labgrid-coordinator (default: ws://localhost:20408/ws)", default="ws://localhost:20408/ws")
+    parser.add_argument('--backend_realm', type=str, required=False, help="realm for the WAMP router (default: realm1)", default="realm1" )
+    parser.add_argument('--frontend_url', type=str, required=False, help="URL for communication between labby and frontend (default: ws://localhost:8083/ws)", default="ws://localhost:8083/ws")
+    parser.add_argument('--frontend_realm', type=str, required=False, help="realm for labby-wamp-router (default: frontend)", default="frontend")
     parser.add_argument('--prompty', action='store_true', required=False)
     parser.add_argument('--keyfile_path', type=str, required=False, help="for ssh session, not functional")
     parser.add_argument('--remote_url', type=str, required=False, help="for ssh session, not functional")

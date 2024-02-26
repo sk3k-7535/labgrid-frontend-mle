@@ -3,11 +3,10 @@
 ## Goal
 Labby ought to be a labgrid web frontend to get an overview over the places acquired right now, even maybe providing some functionalities.
 
-## usage
-The frontend can be started by entering the labgrid-web-client directory and `npm run start` (development)
-
-The labby controller is started by entering the python-labby-client directory and `python -m labby`. 
-It also needs to be configured. The configuration takes the frontend- and backend-URL and -REALM. Frontend refers to the web client mentioned above, while the main labgrid installation with its coordinator is called the backend.
+### usage
+The frontend is an angular web client that can be hosted by a web server like apache or nginx.
+The middleman is labby, a python module that listens to the frontend and communicates with the labgrid controller.
+Labby takes the configuration for connections to your labgrid instance and the frontend web server.
 
 ## infrastructure
 As labgrid does, labby operates on a WAMP system.
@@ -43,12 +42,14 @@ Also it needs to be known, which authentication method is used.
 Default is none, at mle this does not suffice, so in `labby\labby.py` the parameter `DEFAULT_COORDINATOR` needs to be set to `false`.
 
 ### labby
-Create a virtual environment and install the `requirements.txt` into it.
+Create a virtual environment and install the `requirements.txt` into it (`pip install -r requirements.txt`)
 Within the virtual environment enter the directory `python-wamp-client` and run `python -m labby`.
+
 The configuration can be modified by three options. The easiest though are 
-a. create and edit a `.labby_config.json` in the same folder or
-b. run the above command with parameters.
-For mle usage: change the global parameter `DEFAULT_COORDINATOR` in `labby\labby.py` to `False`.
+a. run the above command with parameters (take a look at `python -m labby --help`)
+b. create and edit a `.labby_config.json` in the same folder or
+
+*For mle usage*: change in `labby\labby.py` the global parameter `DEFAULT_COORDINATOR` to `False`.
 
 The configuration json file may look like:
 ```
@@ -59,11 +60,16 @@ The configuration json file may look like:
 	"frontend_realm": "frontend"
 }
 ```
+
 ### angular-frontend
 For *development* purposes, 
 install npm, in the `labgrid-web-client` run `npm install` and then `npm run start`.
-For *deployment* purposes, the angular frontend can be build by `npm run build`.
-The created/updated folder `labgrid-web-client/dist` may be copied e.g. to /var/www/dist, before a web server as apache deploys the site.
+The angular frontend can be compiled by `npm run build`.
+
+If the frontend and labby are to be run on different machines, the configuration has to be changed for the frontend to know, where to communicate to.
+To do so, in the file `labgrid-web-client\src\environments\environment-prod.ts` the corresponding value has to be changed and the `npm run build` command executed to update the `dist` folder for production.
+
+For *deployment*, the created/updated folder `labgrid-web-client/dist` may be copied e.g. to /var/www/dist, before a web server as apache deploys the site.
 The apache config (`\etc\apache2\sites-available\lgwebend.conf`) may look like this (not for fire)
 ```
 <VirtualHost *:80>
@@ -77,8 +83,3 @@ The apache config (`\etc\apache2\sites-available\lgwebend.conf`) may look like t
 ```
 Apache needs to enable (`sudo a2ensite lgwebend.conf`) the site and restart (`sudo systemctl reload apache2`).
 Afterwards, the website is reacheable under `lgwebend.localhost`.
-
-*Rewriting*
-- `sudo a2enmod rewrite`
-- `sudo systemctl restart apache2`
-- `vim .htaccess` in project root
